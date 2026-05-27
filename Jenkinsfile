@@ -19,7 +19,7 @@ pipeline {
         SONAR_TOKEN     = credentials('sonar-token')
 
         // ── SonarCloud project details (update these) ──
-        SONAR_ORG       = 'brijesh-secops_scanner'          // your SonarCloud org key
+        SONAR_ORG       = 'brijesh-secops'          // your SonarCloud org key
         SONAR_PROJECT   = 'brijesh-secops'  // your SonarCloud project key
 
         // ── JFrog Cloud repo URL (update with your instance) ──
