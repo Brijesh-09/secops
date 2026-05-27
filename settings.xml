@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+    settings.xml — Maven credentials file
+    =======================================
+    Lives in the PROJECT ROOT (not ~/.m2/settings.xml)
+    Jenkins passes it to Maven using: mvn -s settings.xml
 
+    FIX: changed ${env.JFROG_USER} to ${jfrog.user}
+    Maven does NOT support ${env.X} syntax in settings.xml.
+    Credentials are injected at runtime by Jenkins via:
+      -Djfrog.user=$JFROG_USER
+      -Djfrog.apikey=$JFROG_APIKEY
+
+    The <id> values here MUST match the <id> values in pom.xml
+    under <repositories> and <distributionManagement>
+-->
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="
@@ -8,18 +22,18 @@
 
     <servers>
 
-        <!-- SNAPSHOT REPOSITORY -->
+        <!-- Credentials for snapshot repo — id matches pom.xml -->
         <server>
             <id>jfrog-snapshot</id>
-            <username>${env.JFROG_USER}</username>
-            <password>${env.JFROG_APIKEY}</password>
+            <username>${jfrog.user}</username>
+            <password>${jfrog.apikey}</password>
         </server>
 
-        <!-- RELEASE REPOSITORY -->
+        <!-- Credentials for release repo — id matches pom.xml -->
         <server>
             <id>jfrog-release</id>
-            <username>${env.JFROG_USER}</username>
-            <password>${env.JFROG_APIKEY}</password>
+            <username>${jfrog.user}</username>
+            <password>${jfrog.apikey}</password>
         </server>
 
     </servers>

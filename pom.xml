@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
@@ -12,10 +11,7 @@
 
     <groupId>com.mycompany</groupId>
     <artifactId>my-app</artifactId>
-
-    <!-- SNAPSHOT = development build -->
     <version>1.0.0-SNAPSHOT</version>
-
     <packaging>jar</packaging>
     <name>My DevSecOps App</name>
 
@@ -28,33 +24,32 @@
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- SonarCloud -->
+        <!-- SonarCloud — update these with your values -->
         <sonar.projectKey>brijesh-secops</sonar.projectKey>
-        <sonar.organization>brijesh-secops_scanner</sonar.organization>
+        <sonar.organization>brijesh-secops</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 
-        <!-- JaCoCo coverage report -->
+        <!-- JaCoCo coverage report path — SonarCloud reads this -->
         <sonar.coverage.jacoco.xmlReportPaths>
             target/site/jacoco/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
 
-        <!-- Base JFrog URL ONLY -->
-        <!-- Jenkins overrides this -->
-        <jfrog.url>
-            https://trialxcztq9.jfrog.io/artifactory
-        </jfrog.url>
+        <!-- JFrog Cloud base URL — NO trailing slash -->
+        <!-- FIX: removed /api/maven/ — that was old self-hosted format -->
+        <!-- JFrog Cloud format is just: artifactory/<repo-name> -->
+        <jfrog.url>https://trialxcztq9.jfrog.io/artifactory</jfrog.url>
 
     </properties>
 
     <!-- =====================================================
          DEPENDENCIES
+         Pulled from JFrog Cloud instead of Maven Central
          ===================================================== -->
     <dependencies>
 
-        <!-- JUnit 5 -->
+        <!-- JUnit 5 for unit testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -62,7 +57,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Logging -->
+        <!-- SLF4J for logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
@@ -74,42 +69,32 @@
     <!-- =====================================================
          REPOSITORIES
          WHERE MAVEN DOWNLOADS DEPENDENCIES FROM
+         FIX: removed /api/maven/ from all URLs
+         Correct JFrog Cloud format: {base-url}/{repo-key}
          ===================================================== -->
     <repositories>
 
-        <!-- RELEASE REPOSITORY -->
+        <!-- Pull release dependencies from JFrog -->
         <repository>
             <id>jfrog-release</id>
-
             <name>JFrog Release Repository</name>
-
-            <url>
-                ${jfrog.url}/api/maven/secops-pipeline-libs-release-local
-            </url>
-
+            <url>${jfrog.url}/secops-pipeline-libs-release-local</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
-
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
         </repository>
 
-        <!-- SNAPSHOT REPOSITORY -->
+        <!-- Pull snapshot dependencies from JFrog -->
         <repository>
             <id>jfrog-snapshot</id>
-
             <name>JFrog Snapshot Repository</name>
-
-            <url>
-                ${jfrog.url}/api/maven/secops-pipeline-libs-snapshot-local
-            </url>
-
+            <url>${jfrog.url}/secops-pipeline-libs-snapshot-local</url>
             <releases>
                 <enabled>false</enabled>
             </releases>
-
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
@@ -118,127 +103,92 @@
     </repositories>
 
     <!-- =====================================================
-         DEPLOYMENT TARGETS
-         WHERE MAVEN UPLOADS ARTIFACTS
+         DISTRIBUTION MANAGEMENT
+         WHERE MAVEN PUSHES THE BUILT ARTIFACT TO
+         FIX: removed /api/maven/ from all URLs
          ===================================================== -->
     <distributionManagement>
 
-        <!-- RELEASE DEPLOYMENT -->
+        <!-- Push release builds to JFrog -->
         <repository>
             <id>jfrog-release</id>
-
             <name>JFrog Release Deployment</name>
-
-            <url>
-                ${jfrog.url}/api/maven/secops-pipeline-libs-release-local
-            </url>
+            <url>${jfrog.url}/secops-pipeline-libs-release-local</url>
         </repository>
 
-        <!-- SNAPSHOT DEPLOYMENT -->
+        <!-- Push snapshot builds to JFrog (current version is SNAPSHOT) -->
         <snapshotRepository>
             <id>jfrog-snapshot</id>
-
             <name>JFrog Snapshot Deployment</name>
-
-            <url>
-                ${jfrog.url}/api/maven/secops-pipeline-libs-snapshot-local
-            </url>
+            <url>${jfrog.url}/secops-pipeline-libs-snapshot-local</url>
         </snapshotRepository>
 
     </distributionManagement>
 
     <!-- =====================================================
-         BUILD CONFIGURATION
+         BUILD PLUGINS
          ===================================================== -->
     <build>
-
         <plugins>
 
-            <!-- =========================================
-                 JAVA COMPILER
-                 ========================================= -->
+            <!-- 1. Java Compiler — use Java 17 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-
                 <artifactId>maven-compiler-plugin</artifactId>
-
                 <version>3.11.0</version>
-
                 <configuration>
                     <source>17</source>
                     <target>17</target>
                 </configuration>
             </plugin>
 
-            <!-- =========================================
-                 UNIT TESTS
-                 ========================================= -->
+            <!-- 2. Surefire — runs JUnit 5 tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-
                 <artifactId>maven-surefire-plugin</artifactId>
-
                 <version>3.1.2</version>
             </plugin>
 
-            <!-- =========================================
-                 JACOCO COVERAGE
-                 ========================================= -->
+            <!-- 3. JaCoCo — measures test coverage
+                 Generates: target/site/jacoco/jacoco.xml
+                 SonarCloud reads this file for coverage % -->
             <plugin>
                 <groupId>org.jacoco</groupId>
-
                 <artifactId>jacoco-maven-plugin</artifactId>
-
                 <version>0.8.11</version>
-
                 <executions>
-
-                    <!-- Attach coverage agent -->
                     <execution>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
-
-                    <!-- Generate XML report -->
                     <execution>
                         <id>report</id>
-
                         <phase>test</phase>
-
                         <goals>
                             <goal>report</goal>
                         </goals>
                     </execution>
-
                 </executions>
             </plugin>
 
-            <!-- =========================================
-                 SONARCLOUD SCANNER
-                 ========================================= -->
+            <!-- 4. SonarCloud Scanner — runs the code scan
+                 Triggered by: mvn sonar:sonar -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
-
                 <artifactId>sonar-maven-plugin</artifactId>
-
                 <version>3.10.0.2594</version>
             </plugin>
 
-            <!-- =========================================
-                 MAVEN DEPLOY PLUGIN
-                 Uploads artifact to JFrog
-                 ========================================= -->
+            <!-- 5. Deploy Plugin — pushes .jar to JFrog
+                 Triggered by: mvn deploy -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-
                 <artifactId>maven-deploy-plugin</artifactId>
-
                 <version>3.1.1</version>
             </plugin>
 
         </plugins>
-
     </build>
 
 </project>
