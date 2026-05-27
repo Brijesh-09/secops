@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  settings.xml — Maven credentials file
+  =======================================
+  This file lives in the PROJECT ROOT (not ~/.m2/settings.xml)
+  Jenkins passes it to Maven using: mvn -s settings.xml
+
+  NEVER hardcode real passwords here.
+  Credentials are injected at runtime by Jenkins via -Djfrog.user and -Djfrog.apikey
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+          https://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <servers>
+    <!--
+      This id "jfrog-central" MUST match the id in pom.xml under:
+        <repositories> and <distributionManagement>
+      Maven uses this id to look up which credentials to use.
+    -->
+    <server>
+      <id>jfrog-central</id>
+      <username>${jfrog.user}</username>     <!-- injected by Jenkins: -Djfrog.user -->
+      <password>${jfrog.apikey}</password>   <!-- injected by Jenkins: -Djfrog.apikey -->
+    </server>
+  </servers>
+
+</settings>

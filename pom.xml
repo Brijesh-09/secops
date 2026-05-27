@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4-0-0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ════════════════════════════════════════════════════
+       PROJECT IDENTITY (GAV)
+       Maven uses these 3 values to name your artifact:
+       my-app-1.0.0-SNAPSHOT.jar
+       ════════════════════════════════════════════════════ -->
+  <groupId>com.mycompany</groupId>
+  <artifactId>my-app</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <name>My DevSecOps App</name>
+
+  <!-- ════════════════════════════════════════════════════
+       PROPERTIES
+       Central place to define versions and SonarCloud config
+       ════════════════════════════════════════════════════ -->
+  <properties>
+    <java.version>17</java.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- SonarCloud settings — update these with your values -->
+    <sonar.projectKey>brijesh-secops</sonar.projectKey>
+    <sonar.organization>brijesh-secops_scanner</sonar.organization>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+
+    <!-- Tell SonarCloud where to find the JaCoCo coverage report -->
+    <sonar.coverage.jacoco.xmlReportPaths>
+      target/site/jacoco/jacoco.xml
+    </sonar.coverage.jacoco.xmlReportPaths>
+
+    <!-- JFrog Cloud URL — injected by Jenkins, fallback for local dev -->
+    <jfrog.url>https://your-instance.jfrog.io/artifactory</jfrog.url>
+  </properties>
+
+  <!-- ════════════════════════════════════════════════════
+       DEPENDENCIES
+       These are pulled from JFrog Cloud (not Maven Central)
+       because we set <repositories> below
+       ════════════════════════════════════════════════════ -->
+  <dependencies>
+
+    <!-- JUnit 5 — for writing tests -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.0</version>
+      <scope>test</scope>   <!-- only in test classpath, excluded from .jar -->
+    </dependency>
+
+    <!-- SLF4J — logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>2.0.9</version>
+    </dependency>
+
+  </dependencies>
+
+  <!-- ════════════════════════════════════════════════════
+       REPOSITORIES
+       WHERE Maven PULLS dependencies from
+       → JFrog Cloud instead of Maven Central
+       ════════════════════════════════════════════════════ -->
+  <repositories>
+    <repository>
+      <id>jfrog-central</id>   <!-- must match settings.xml server id -->
+      <name>JFrog Cloud - Release</name>
+      <url>${jfrog.url}/libs-release-local</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+
+    <repository>
+      <id>jfrog-snapshots</id>
+      <name>JFrog Cloud - Snapshot</name>
+      <url>${jfrog.url}/libs-snapshot-local</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
+  <!-- ════════════════════════════════════════════════════
+       DISTRIBUTION MANAGEMENT
+       WHERE Maven PUSHES the built artifact to
+       → JFrog Cloud after successful build
+       ════════════════════════════════════════════════════ -->
+  <distributionManagement>
+    <repository>
+      <id>jfrog-central</id>   <!-- must match settings.xml server id -->
+      <name>JFrog Cloud - Release</name>
+      <url>${jfrog.url}/libs-release-local</url>
+    </repository>
+    <snapshotRepository>
+      <id>jfrog-central</id>
+      <name>JFrog Cloud - Snapshot</name>
+      <url>${jfrog.url}/libs-snapshot-local</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <!-- ════════════════════════════════════════════════════
+       BUILD PLUGINS
+       ════════════════════════════════════════════════════ -->
+  <build>
+    <plugins>
+
+      <!-- 1. Compiler Plugin — use Java 17 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <source>17</source>
+          <target>17</target>
+        </configuration>
+      </plugin>
+
+      <!-- 2. Surefire Plugin — runs JUnit 5 tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.1.2</version>
+      </plugin>
+
+      <!-- 3. JaCoCo Plugin — measures test coverage
+           SonarCloud reads the report this generates
+           at: target/site/jacoco/jacoco.xml -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.11</version>
+        <executions>
+          <!-- Hooks into test execution to measure coverage -->
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <!-- Generates the XML report after tests run -->
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- 4. SonarQube/SonarCloud Plugin — runs the scan
+           Used with: mvn sonar:sonar -->
+      <plugin>
+        <groupId>org.sonarsource.scanner.maven</groupId>
+        <artifactId>sonar-maven-plugin</artifactId>
+        <version>3.10.0.2594</version>
+      </plugin>
+
+      <!-- 5. Deploy Plugin — pushes .jar to JFrog
+           Used with: mvn deploy -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>3.1.1</version>
+      </plugin>
+
+    </plugins>
+  </build>
+
+</project>
