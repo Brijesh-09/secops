@@ -14,7 +14,7 @@ pipeline {
         SONAR_TOKEN  = credentials('sonar-token')
 
         // SonarCloud
-        SONAR_ORG    = 'brijesh-secops_scanner'
+        SONAR_ORG    = 'brijesh-secops'
         SONAR_PROJECT = 'brijesh-secops'
 
         // JFrog Base URL
