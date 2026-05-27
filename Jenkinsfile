@@ -1,191 +1,182 @@
 pipeline {
     agent any
- 
+
     tools {
-        maven 'Maven-3.9'   // configured in Jenkins → Tools
+        maven 'Maven-3.9'
     }
- 
+
     environment {
-        // ── JFrog Cloud credentials (stored in Jenkins credentials) ──
-        JFROG_USER      = credentials('jfrog-user')
-        JFROG_APIKEY    = credentials('jfrog-apikey')
- 
-        // ── SonarCloud credentials ──
-        SONAR_TOKEN     = credentials('sonar-token')
- 
-        // ── SonarCloud project details — update these with YOUR values ──
-        SONAR_ORG       = 'brijesh-secops'          // e.g. brijesh-secops
-        SONAR_PROJECT   = 'brijesh-secops'  // e.g. brijesh-secops_my-app
- 
-        // ── JFrog Cloud URL — update with YOUR instance ──
-        JFROG_URL       = 'https://trialxcztq9.jfrog.io/artifactory'
- 
-        // ── Auto version using Jenkins build number ──
-        APP_VERSION     = "1.0.${BUILD_NUMBER}"
+
+        // Jenkins Credentials
+        JFROG_USER   = credentials('jfrog-user')
+        JFROG_APIKEY = credentials('jfrog-apikey')
+
+        SONAR_TOKEN  = credentials('sonar-token')
+
+        // SonarCloud
+        SONAR_ORG    = 'brijesh-secops_scanner'
+        SONAR_PROJECT = 'brijesh-secops'
+
+        // JFrog Base URL
+        JFROG_URL = 'https://trialxcztq9.jfrog.io/artifactory'
+
+        // Build Version
+        APP_VERSION = "1.0.${BUILD_NUMBER}"
     }
- 
+
     stages {
- 
-        // ─────────────────────────────────────────────────
-        // STAGE 1: Checkout
-        // Pull the latest code from your Git repo
-        // ─────────────────────────────────────────────────
+
+        // =====================================================
+        // CHECKOUT
+        // =====================================================
         stage('Checkout') {
             steps {
+
                 echo "📥 Checking out source code (Build #${BUILD_NUMBER})"
+
                 checkout scm
             }
         }
- 
-        // ─────────────────────────────────────────────────
-        // STAGE 2: Build & Test
-        // Compile code, run JUnit tests, generate JaCoCo
-        // coverage report — SonarCloud reads this later
-        // Dependencies are pulled from JFrog Cloud
-        // ─────────────────────────────────────────────────
+
+        // =====================================================
+        // BUILD + TEST
+        // =====================================================
         stage('Build & Test') {
             steps {
+
                 echo '🔨 Building and running tests...'
-                sh """
-                    mvn clean test \
-                        -s settings.xml \
-                        -Djfrog.url=${JFROG_URL} \
-                        -Djfrog.user=${JFROG_USER} \
-                        -Djfrog.apikey=${JFROG_APIKEY} \
-                        -Dproject.version=${APP_VERSION}
-                """
+
+                sh '''
+                mvn clean test \
+                    -s settings.xml
+                '''
             }
+
             post {
+
                 always {
-                    // Publish JUnit test results in Jenkins UI
                     junit '**/target/surefire-reports/*.xml'
                 }
+
                 failure {
-                    echo '❌ Tests failed. Fix them before proceeding.'
+                    echo '❌ Tests failed.'
                 }
             }
         }
- 
-        // ─────────────────────────────────────────────────
-        // STAGE 3: SonarCloud Analysis
-        // FIX: wrapped inside withSonarQubeEnv() so that
-        // the Quality Gate stage can track this analysis.
-        // The name 'SonarCloud' must EXACTLY match what you
-        // set in Jenkins → Manage Jenkins → System →
-        // SonarQube servers → Name field
-        // ─────────────────────────────────────────────────
+
+        // =====================================================
+        // SONARCLOUD ANALYSIS
+        // =====================================================
         stage('SonarCloud Analysis') {
-    steps {
 
-        echo '🔍 Running SonarCloud code analysis...'
-
-        withSonarQubeEnv('SonarCloud') {
-
-            sh '''
-            mvn sonar:sonar \
-                -s settings.xml \
-                -Dsonar.projectKey=$SONAR_PROJECT \
-                -Dsonar.organization=$SONAR_ORG \
-                -Dsonar.host.url=https://sonarcloud.io \
-                -Dsonar.token=$SONAR_TOKEN \
-                -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-            '''
-        }
-    }
-}
- 
-        // ─────────────────────────────────────────────────
-        // STAGE 4: Quality Gate
-        // Waits for SonarCloud to finish its analysis and
-        // return a PASSED or FAILED result via webhook.
-        // Pipeline STOPS here if code quality is too low.
-        // This is the "Sec" in DevSecOps.
-        //
-        // REQUIREMENT: You must set up a webhook in
-        // SonarCloud → Project → Administration → Webhooks
-        // URL: http://<minikube-ip>:30080/sonarqube-webhook/
-        // ─────────────────────────────────────────────────
-        stage('Quality Gate') {
             steps {
-                echo '🚦 Waiting for SonarCloud Quality Gate result...'
+
+                echo '🔍 Running SonarCloud analysis...'
+
+                withSonarQubeEnv('SonarCloud') {
+
+                    sh '''
+                    mvn sonar:sonar \
+                        -s settings.xml \
+                        -Dsonar.projectKey=$SONAR_PROJECT \
+                        -Dsonar.organization=$SONAR_ORG \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.token=$SONAR_TOKEN \
+                        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    '''
+                }
+            }
+        }
+
+        // =====================================================
+        // QUALITY GATE
+        // =====================================================
+        stage('Quality Gate') {
+
+            steps {
+
+                echo '🚦 Waiting for SonarCloud Quality Gate...'
+
                 timeout(time: 5, unit: 'MINUTES') {
-                    // abortPipeline: true means if quality gate FAILS
-                    // the pipeline stops and does NOT deploy to JFrog
+
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
- 
-        // ─────────────────────────────────────────────────
-        // STAGE 5: Package
-        // Create the final .jar artifact
-        // Archived in Jenkins UI so you can download it
-        // ─────────────────────────────────────────────────
+
+        // =====================================================
+        // PACKAGE
+        // =====================================================
         stage('Package') {
+
             steps {
-                echo '📦 Packaging the application...'
-                sh """
-                    mvn package \
-                        -DskipTests \
-                        -s settings.xml \
-                        -Djfrog.url=${JFROG_URL} \
-                        -Djfrog.user=${JFROG_USER} \
-                        -Djfrog.apikey=${JFROG_APIKEY} \
-                        -Dproject.version=${APP_VERSION}
-                """
-                // Archive the .jar so it shows up in Jenkins UI
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+
+                echo '📦 Packaging application...'
+
+                sh '''
+                mvn package \
+                    -DskipTests \
+                    -s settings.xml
+                '''
+
+                archiveArtifacts artifacts: 'target/*.jar',
+                                 fingerprint: true
             }
         }
- 
-        // ─────────────────────────────────────────────────
-        // STAGE 6: Deploy to JFrog Cloud
-        // Push the built .jar to JFrog Artifactory
-        // Makes it available for other teams/services
-        // ─────────────────────────────────────────────────
+
+        // =====================================================
+        // DEPLOY TO JFROG
+        // =====================================================
         stage('Deploy to JFrog') {
+
             steps {
-                echo "🚀 Pushing artifact v${APP_VERSION} to JFrog Cloud..."
-                sh """
-                    mvn deploy \
-                        -DskipTests \
-                        -s settings.xml \
-                        -Djfrog.url=${JFROG_URL} \
-                        -Djfrog.user=${JFROG_USER} \
-                        -Djfrog.apikey=${JFROG_APIKEY} \
-                        -Dproject.version=${APP_VERSION}
-                """
+
+                echo "🚀 Deploying artifact to JFrog..."
+
+                sh '''
+                mvn deploy \
+                    -DskipTests \
+                    -s settings.xml
+                '''
             }
         }
     }
- 
-    // ─────────────────────────────────────────────────────
-    // POST: Runs after all stages complete
-    // ─────────────────────────────────────────────────────
+
+    // =====================================================
+    // POST ACTIONS
+    // =====================================================
     post {
+
         success {
+
             echo """
-            ✅ Pipeline SUCCESS
-            ───────────────────────────────
-            Build     : #${BUILD_NUMBER}
-            Version   : ${APP_VERSION}
-            Artifact  : my-app-${APP_VERSION}.jar
-            JFrog URL : ${JFROG_URL}/libs-snapshot-local/
-            SonarCloud: https://sonarcloud.io/project/overview?id=${SONAR_PROJECT}
-            ───────────────────────────────
+            ✅ PIPELINE SUCCESS
+
+            Build Number : #${BUILD_NUMBER}
+            Version      : ${APP_VERSION}
+
+            SonarCloud:
+            https://sonarcloud.io/project/overview?id=${SONAR_PROJECT}
+
+            JFrog:
+            ${JFROG_URL}
+
             """
         }
+
         failure {
+
             echo """
-            ❌ Pipeline FAILED
-            Check console output above for details.
+            ❌ PIPELINE FAILED
+
+            Check Jenkins console logs for details.
             """
         }
+
         always {
-            echo "Build #${BUILD_NUMBER} completed — Status: ${currentBuild.currentResult}"
-            // FIX: replaced cleanWs() with deleteDir()
-            // cleanWs() requires the 'Workspace Cleanup' plugin
-            // deleteDir() is built into Jenkins — no plugin needed
+
+            echo "Build #${BUILD_NUMBER} completed with status: ${currentBuild.currentResult}"
+
             deleteDir()
         }
     }
