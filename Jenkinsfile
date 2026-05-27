@@ -1,36 +1,31 @@
-// ============================================================
-//  DevSecOps Pipeline
-//  Tools: Jenkins (Minikube) + SonarCloud + JFrog Cloud
-// ============================================================
-
 pipeline {
     agent any
-
+ 
     tools {
         maven 'Maven-3.9'   // configured in Jenkins → Tools
     }
-
+ 
     environment {
         // ── JFrog Cloud credentials (stored in Jenkins credentials) ──
         JFROG_USER      = credentials('jfrog-user')
         JFROG_APIKEY    = credentials('jfrog-apikey')
-
+ 
         // ── SonarCloud credentials ──
         SONAR_TOKEN     = credentials('sonar-token')
-
-        // ── SonarCloud project details (update these) ──
-        SONAR_ORG       = 'brijesh-secops'          // your SonarCloud org key
-        SONAR_PROJECT   = 'brijesh-secops'  // your SonarCloud project key
-
-        // ── JFrog Cloud repo URL (update with your instance) ──
+ 
+        // ── SonarCloud project details — update these with YOUR values ──
+        SONAR_ORG       = 'brijesh-secops'          // e.g. brijesh-secops
+        SONAR_PROJECT   = 'brijesh-secops'  // e.g. brijesh-secops_my-app
+ 
+        // ── JFrog Cloud URL — update with YOUR instance ──
         JFROG_URL       = 'https://trialxcztq9.jfrog.io/artifactory/api/maven/libs-release-local-libs-snapshot'
-
-        // ── Auto version using build number ──
+ 
+        // ── Auto version using Jenkins build number ──
         APP_VERSION     = "1.0.${BUILD_NUMBER}"
     }
-
+ 
     stages {
-
+ 
         // ─────────────────────────────────────────────────
         // STAGE 1: Checkout
         // Pull the latest code from your Git repo
@@ -41,12 +36,12 @@ pipeline {
                 checkout scm
             }
         }
-
+ 
         // ─────────────────────────────────────────────────
         // STAGE 2: Build & Test
         // Compile code, run JUnit tests, generate JaCoCo
-        // coverage report (SonarCloud reads this later)
-        // Dependencies pulled from JFrog Cloud
+        // coverage report — SonarCloud reads this later
+        // Dependencies are pulled from JFrog Cloud
         // ─────────────────────────────────────────────────
         stage('Build & Test') {
             steps {
@@ -62,7 +57,7 @@ pipeline {
             }
             post {
                 always {
-                    // Show test results in Jenkins UI
+                    // Publish JUnit test results in Jenkins UI
                     junit '**/target/surefire-reports/*.xml'
                 }
                 failure {
@@ -70,46 +65,58 @@ pipeline {
                 }
             }
         }
-
+ 
         // ─────────────────────────────────────────────────
         // STAGE 3: SonarCloud Analysis
-        // Sends code + coverage data to SonarCloud
-        // SonarCloud runs the scan on their servers
+        // FIX: wrapped inside withSonarQubeEnv() so that
+        // the Quality Gate stage can track this analysis.
+        // The name 'SonarCloud' must EXACTLY match what you
+        // set in Jenkins → Manage Jenkins → System →
+        // SonarQube servers → Name field
         // ─────────────────────────────────────────────────
         stage('SonarCloud Analysis') {
             steps {
                 echo '🔍 Running SonarCloud code analysis...'
-                sh """
-                    mvn sonar:sonar \
-                        -s settings.xml \
-                        -Dsonar.projectKey=${SONAR_PROJECT} \
-                        -Dsonar.organization=${SONAR_ORG} \
-                        -Dsonar.host.url=https://sonarcloud.io \
-                        -Dsonar.login=${SONAR_TOKEN} \
-                        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-                """
+                withSonarQubeEnv('SonarCloud') {
+                    sh """
+                        mvn sonar:sonar \
+                            -s settings.xml \
+                            -Dsonar.projectKey=${SONAR_PROJECT} \
+                            -Dsonar.organization=${SONAR_ORG} \
+                            -Dsonar.host.url=https://sonarcloud.io \
+                            -Dsonar.login=${SONAR_TOKEN} \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    """
+                }
             }
         }
-
+ 
         // ─────────────────────────────────────────────────
         // STAGE 4: Quality Gate
-        // Waits for SonarCloud to finish analysis
-        // Pipeline STOPS here if code quality is too low
-        // This is the "Sec" in DevSecOps
+        // Waits for SonarCloud to finish its analysis and
+        // return a PASSED or FAILED result via webhook.
+        // Pipeline STOPS here if code quality is too low.
+        // This is the "Sec" in DevSecOps.
+        //
+        // REQUIREMENT: You must set up a webhook in
+        // SonarCloud → Project → Administration → Webhooks
+        // URL: http://<minikube-ip>:30080/sonarqube-webhook/
         // ─────────────────────────────────────────────────
         stage('Quality Gate') {
             steps {
                 echo '🚦 Waiting for SonarCloud Quality Gate result...'
                 timeout(time: 5, unit: 'MINUTES') {
+                    // abortPipeline: true means if quality gate FAILS
+                    // the pipeline stops and does NOT deploy to JFrog
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
-
+ 
         // ─────────────────────────────────────────────────
         // STAGE 5: Package
         // Create the final .jar artifact
-        // Archive it in Jenkins so you can download it
+        // Archived in Jenkins UI so you can download it
         // ─────────────────────────────────────────────────
         stage('Package') {
             steps {
@@ -123,15 +130,15 @@ pipeline {
                         -Djfrog.apikey=${JFROG_APIKEY} \
                         -Dproject.version=${APP_VERSION}
                 """
-                // Archive artifact in Jenkins UI
+                // Archive the .jar so it shows up in Jenkins UI
                 archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
-
+ 
         // ─────────────────────────────────────────────────
         // STAGE 6: Deploy to JFrog Cloud
-        // Push the .jar to your JFrog Cloud repository
-        // This makes it available for other teams to use
+        // Push the built .jar to JFrog Artifactory
+        // Makes it available for other teams/services
         // ─────────────────────────────────────────────────
         stage('Deploy to JFrog') {
             steps {
@@ -148,9 +155,9 @@ pipeline {
             }
         }
     }
-
+ 
     // ─────────────────────────────────────────────────────
-    // POST: Notifications after pipeline finishes
+    // POST: Runs after all stages complete
     // ─────────────────────────────────────────────────────
     post {
         success {
@@ -167,14 +174,16 @@ pipeline {
         }
         failure {
             echo """
-            ❌ Pipeline FAILED at stage: ${env.STAGE_NAME}
+            ❌ Pipeline FAILED
             Check console output above for details.
             """
         }
         always {
             echo "Build #${BUILD_NUMBER} completed — Status: ${currentBuild.currentResult}"
-            // Clean workspace to save disk space on Minikube
-            cleanWs()
+            // FIX: replaced cleanWs() with deleteDir()
+            // cleanWs() requires the 'Workspace Cleanup' plugin
+            // deleteDir() is built into Jenkins — no plugin needed
+            deleteDir()
         }
     }
 }
