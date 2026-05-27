@@ -75,21 +75,24 @@ pipeline {
         // SonarQube servers → Name field
         // ─────────────────────────────────────────────────
         stage('SonarCloud Analysis') {
-            steps {
-                echo '🔍 Running SonarCloud code analysis...'
-                withSonarQubeEnv('SonarCloud') {
-                    sh """
-                        mvn sonar:sonar \
-                            -s settings.xml \
-                            -Dsonar.projectKey=${SONAR_PROJECT} \
-                            -Dsonar.organization=${SONAR_ORG} \
-                            -Dsonar.host.url=https://sonarcloud.io \
-                            -Dsonar.login=${SONAR_TOKEN} \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-                    """
-                }
-            }
+    steps {
+
+        echo '🔍 Running SonarCloud code analysis...'
+
+        withSonarQubeEnv('SonarCloud') {
+
+            sh '''
+            mvn sonar:sonar \
+                -s settings.xml \
+                -Dsonar.projectKey=$SONAR_PROJECT \
+                -Dsonar.organization=$SONAR_ORG \
+                -Dsonar.host.url=https://sonarcloud.io \
+                -Dsonar.token=$SONAR_TOKEN \
+                -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+            '''
         }
+    }
+}
  
         // ─────────────────────────────────────────────────
         // STAGE 4: Quality Gate
