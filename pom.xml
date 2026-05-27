@@ -28,7 +28,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!-- SonarCloud settings — update these with your values -->
-    <sonar.projectKey>brijesh-secops</sonar.projectKey>
+    <sonar.projectKey>brijesh-secops_secops</sonar.projectKey>
     <sonar.organization>brijesh-secops_scanner</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 
