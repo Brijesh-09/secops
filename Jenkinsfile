@@ -18,7 +18,7 @@ pipeline {
         SONAR_PROJECT   = 'brijesh-secops'  // e.g. brijesh-secops_my-app
  
         // ── JFrog Cloud URL — update with YOUR instance ──
-        JFROG_URL       = 'https://trialxcztq9.jfrog.io/artifactory/api/maven/secops-pipeline-libs-snapshot-local''
+        JFROG_URL       = 'https://trialxcztq9.jfrog.io/artifactory/api/maven/secops-pipeline-libs-snapshot-local'
  
         // ── Auto version using Jenkins build number ──
         APP_VERSION     = "1.0.${BUILD_NUMBER}"
