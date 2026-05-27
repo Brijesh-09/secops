@@ -20,7 +20,7 @@ pipeline {
 
         // ── SonarCloud project details (update these) ──
         SONAR_ORG       = 'brijesh-secops_scanner'          // your SonarCloud org key
-        SONAR_PROJECT   = 'brijesh-secops_secops'  // your SonarCloud project key
+        SONAR_PROJECT   = 'brijesh-secops'  // your SonarCloud project key
 
         // ── JFrog Cloud repo URL (update with your instance) ──
         JFROG_URL       = 'https://trialxcztq9.jfrog.io/artifactory/api/maven/libs-release-local-libs-snapshot'
