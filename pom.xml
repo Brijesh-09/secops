@@ -4,11 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
          http://maven.apache.org/xsd/maven-4-0-0.xsd">
 
-    <!-- =====================================================
-         BASIC PROJECT INFORMATION
-         ===================================================== -->
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- =====================================================
+         PROJECT IDENTITY
+         Maven uses these 3 to name your artifact:
+         my-app-1.0.0-SNAPSHOT.jar
+         ===================================================== -->
     <groupId>com.mycompany</groupId>
     <artifactId>my-app</artifactId>
     <version>1.0.0-SNAPSHOT</version>
@@ -16,40 +18,45 @@
     <name>My DevSecOps App</name>
 
     <!-- =====================================================
-         GLOBAL PROPERTIES
+         PROPERTIES
          ===================================================== -->
     <properties>
-
-        <!-- Java -->
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- SonarCloud — update these with your values -->
+        <!-- SonarCloud -->
         <sonar.projectKey>brijesh-secops</sonar.projectKey>
         <sonar.organization>brijesh-secops</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 
-        <!-- JaCoCo coverage report path — SonarCloud reads this -->
+        <!-- JaCoCo coverage report — SonarCloud reads this -->
         <sonar.coverage.jacoco.xmlReportPaths>
             target/site/jacoco/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
 
-        <!-- JFrog Cloud base URL — NO trailing slash -->
-        <!-- FIX: removed /api/maven/ — that was old self-hosted format -->
-        <!-- JFrog Cloud format is just: artifactory/<repo-name> -->
+        <!-- JFrog Cloud base URL — no trailing slash -->
         <jfrog.url>https://trialxcztq9.jfrog.io/artifactory</jfrog.url>
-
     </properties>
 
     <!-- =====================================================
          DEPENDENCIES
-         Pulled from JFrog Cloud instead of Maven Central
+         These are 3rd party libraries your project needs.
+
+         HOW IT WORKS NOW (fully correct):
+         Maven asks JFrog virtual repo for each dependency.
+         JFrog checks its local cache first.
+         If not cached, JFrog fetches from Maven Central,
+         stores it internally, then serves it to Maven.
+         So ALL dependencies flow through JFrog — never
+         directly from Maven Central to your machine.
+         This is what enterprises do for security + audit.
          ===================================================== -->
     <dependencies>
 
-        <!-- JUnit 5 for unit testing -->
+        <!-- JUnit 5 — unit testing framework -->
+        <!-- Flow: Maven → JFrog virtual → Maven Central (first time only) -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -57,7 +64,8 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- SLF4J for logging -->
+        <!-- SLF4J — logging -->
+        <!-- Flow: Maven → JFrog virtual → Maven Central (first time only) -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
@@ -68,55 +76,54 @@
 
     <!-- =====================================================
          REPOSITORIES
-         WHERE MAVEN DOWNLOADS DEPENDENCIES FROM
-         FIX: removed /api/maven/ from all URLs
-         Correct JFrog Cloud format: {base-url}/{repo-key}
+         WHERE MAVEN PULLS DEPENDENCIES FROM
+
+         BEFORE (broken): pointed at local repo only
+           → JFrog local repo has no JUnit/SLF4J
+           → Build fails: artifact not found
+
+         AFTER (fixed): points at virtual repo
+           → Virtual repo = local + remote (Maven Central proxy)
+           → JFrog fetches from Maven Central if not cached
+           → ALL 3rd party deps flow through JFrog ✅
          ===================================================== -->
     <repositories>
-
-        <!-- Pull release dependencies from JFrog -->
         <repository>
-            <id>jfrog-release</id>
-            <name>JFrog Release Repository</name>
-            <url>${jfrog.url}/secops-pipeline-libs-release-local</url>
+            <id>jfrog-virtual</id>
+            <name>JFrog Virtual Repository</name>
+            <!-- Virtual repo combines:
+                 1. secops-pipeline-libs-release-local  (your releases)
+                 2. secops-pipeline-libs-snapshot-local (your snapshots)
+                 3. maven-central-remote                (proxies Maven Central)
+            -->
+            <url>${jfrog.url}/maven-virtual</url>
             <releases>
                 <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-
-        <!-- Pull snapshot dependencies from JFrog -->
-        <repository>
-            <id>jfrog-snapshot</id>
-            <name>JFrog Snapshot Repository</name>
-            <url>${jfrog.url}/secops-pipeline-libs-snapshot-local</url>
-            <releases>
-                <enabled>false</enabled>
             </releases>
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
         </repository>
-
     </repositories>
 
     <!-- =====================================================
          DISTRIBUTION MANAGEMENT
-         WHERE MAVEN PUSHES THE BUILT ARTIFACT TO
-         FIX: removed /api/maven/ from all URLs
+         WHERE MAVEN PUSHES YOUR BUILT ARTIFACT TO
+
+         Still using local repos for push — correct.
+         You push YOUR artifacts to local repos.
+         You pull 3rd party deps from virtual repo.
          ===================================================== -->
     <distributionManagement>
 
-        <!-- Push release builds to JFrog -->
+        <!-- Push release builds here -->
         <repository>
             <id>jfrog-release</id>
             <name>JFrog Release Deployment</name>
             <url>${jfrog.url}/secops-pipeline-libs-release-local</url>
         </repository>
 
-        <!-- Push snapshot builds to JFrog (current version is SNAPSHOT) -->
+        <!-- Push snapshot builds here (current version is SNAPSHOT) -->
         <snapshotRepository>
             <id>jfrog-snapshot</id>
             <name>JFrog Snapshot Deployment</name>
@@ -131,7 +138,7 @@
     <build>
         <plugins>
 
-            <!-- 1. Java Compiler — use Java 17 -->
+            <!-- 1. Java Compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -149,9 +156,9 @@
                 <version>3.1.2</version>
             </plugin>
 
-            <!-- 3. JaCoCo — measures test coverage
+            <!-- 3. JaCoCo — test coverage
                  Generates: target/site/jacoco/jacoco.xml
-                 SonarCloud reads this file for coverage % -->
+                 SonarCloud reads this for coverage % -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -172,16 +179,14 @@
                 </executions>
             </plugin>
 
-            <!-- 4. SonarCloud Scanner — runs the code scan
-                 Triggered by: mvn sonar:sonar -->
+            <!-- 4. SonarCloud Scanner -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>3.10.0.2594</version>
             </plugin>
 
-            <!-- 5. Deploy Plugin — pushes .jar to JFrog
-                 Triggered by: mvn deploy -->
+            <!-- 5. Deploy Plugin — pushes .jar to JFrog -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
