@@ -1,8 +1,3 @@
-// ============================================================
-//  DevSecOps Pipeline
-//  Tools: Jenkins (Minikube) + SonarCloud + JFrog Cloud
-// ============================================================
-
 pipeline {
     agent any
 
@@ -46,10 +41,6 @@ pipeline {
         // - Runs JUnit 5 tests
         // - Generates JaCoCo coverage report
         // - Pulls dependencies from JFrog Cloud
-        //
-        // FIX: added -Djfrog.user and -Djfrog.apikey
-        // so settings.xml can resolve ${jfrog.user} and
-        // ${jfrog.apikey} at runtime from Jenkins credentials
         // =====================================================
         stage('Build & Test') {
             steps {
@@ -76,9 +67,6 @@ pipeline {
         // - Sends code + JaCoCo coverage to SonarCloud
         // - withSonarQubeEnv() registers the analysis so
         //   the Quality Gate stage can track it
-        //
-        // NOTE: 'SonarCloud' must EXACTLY match the name in
-        // Jenkins → Manage Jenkins → System → SonarQube servers
         // =====================================================
         stage('SonarCloud Analysis') {
             steps {
@@ -104,10 +92,6 @@ pipeline {
         // - Waits for SonarCloud to return PASS or FAIL
         // - Pipeline STOPS if quality is below threshold
         // - This is the "Sec" part of DevSecOps
-        //
-        // REQUIREMENT: SonarCloud webhook must be set up:
-        // SonarCloud → Project → Admin → Webhooks → Create
-        // URL: http://<minikube-ip>:30080/sonarqube-webhook/
         // =====================================================
         stage('Quality Gate') {
             steps {
@@ -122,8 +106,6 @@ pipeline {
         // STAGE 5: PACKAGE
         // - Builds the final .jar artifact
         // - Archives it in Jenkins UI for download
-        //
-        // FIX: added -Djfrog.user and -Djfrog.apikey
         // =====================================================
         stage('Package') {
             steps {
@@ -144,10 +126,6 @@ pipeline {
         // - Pushes the .jar to JFrog Cloud Artifactory
         // - Since version is SNAPSHOT, goes to:
         //   secops-pipeline-libs-snapshot-local
-        //
-        // FIX: added -Djfrog.user and -Djfrog.apikey
-        // These are picked up by settings.xml as ${jfrog.user}
-        // and ${jfrog.apikey} to authenticate with JFrog
         // =====================================================
         stage('Deploy to JFrog') {
             steps {

@@ -8,8 +8,6 @@
 
     <!-- =====================================================
          PROJECT IDENTITY
-         Maven uses these 3 to name your artifact:
-         my-app-1.0.0-SNAPSHOT.jar
          ===================================================== -->
     <groupId>com.mycompany</groupId>
     <artifactId>my-app</artifactId>
@@ -42,16 +40,6 @@
 
     <!-- =====================================================
          DEPENDENCIES
-         These are 3rd party libraries your project needs.
-
-         HOW IT WORKS NOW (fully correct):
-         Maven asks JFrog virtual repo for each dependency.
-         JFrog checks its local cache first.
-         If not cached, JFrog fetches from Maven Central,
-         stores it internally, then serves it to Maven.
-         So ALL dependencies flow through JFrog — never
-         directly from Maven Central to your machine.
-         This is what enterprises do for security + audit.
          ===================================================== -->
     <dependencies>
 
@@ -76,16 +64,6 @@
 
     <!-- =====================================================
          REPOSITORIES
-         WHERE MAVEN PULLS DEPENDENCIES FROM
-
-         BEFORE (broken): pointed at local repo only
-           → JFrog local repo has no JUnit/SLF4J
-           → Build fails: artifact not found
-
-         AFTER (fixed): points at virtual repo
-           → Virtual repo = local + remote (Maven Central proxy)
-           → JFrog fetches from Maven Central if not cached
-           → ALL 3rd party deps flow through JFrog ✅
          ===================================================== -->
     <repositories>
         <repository>
@@ -108,11 +86,6 @@
 
     <!-- =====================================================
          DISTRIBUTION MANAGEMENT
-         WHERE MAVEN PUSHES YOUR BUILT ARTIFACT TO
-
-         Still using local repos for push — correct.
-         You push YOUR artifacts to local repos.
-         You pull 3rd party deps from virtual repo.
          ===================================================== -->
     <distributionManagement>
 

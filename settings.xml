@@ -19,7 +19,6 @@
     <servers>
 
         <!-- Virtual repo — used for PULLING 3rd party dependencies -->
-        <!-- id must match <repositories><repository><id> in pom.xml -->
         <server>
             <id>jfrog-virtual</id>
             <username>${jfrog.user}</username>
@@ -27,7 +26,6 @@
         </server>
 
         <!-- Release repo — used for PUSHING release builds -->
-        <!-- id must match <distributionManagement><repository><id> in pom.xml -->
         <server>
             <id>jfrog-release</id>
             <username>${jfrog.user}</username>
@@ -35,7 +33,6 @@
         </server>
 
         <!-- Snapshot repo — used for PUSHING snapshot builds -->
-        <!-- id must match <distributionManagement><snapshotRepository><id> in pom.xml -->
         <server>
             <id>jfrog-snapshot</id>
             <username>${jfrog.user}</username>
